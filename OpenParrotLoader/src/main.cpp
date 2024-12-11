@@ -174,6 +174,11 @@ int wmain(int argc, wchar_t* argv[])
 	wchar_t* gameFolderW = new wchar_t[wcslen(gamePath.parent_path().wstring().c_str()) + 1]{ 0 };
 	wcscpy(gameFolderW, gamePath.parent_path().wstring().c_str());
 
+	//create a LPCSTR that holds the gamepath + "\\outputblaster.dll" 
+	char outputBlasterPath[1024];
+	sprintf(outputBlasterPath, "%ls\\outputblaster.dll", gameFolderW);
+
+
 	// Print paths
 	wprintf(L"Loader: %ls (%ls)\n", loaderPathW, GetFileVersion(loaderPathW));
 	wprintf(L"Core:   %ls (%ls)\n", corePathW, GetFileVersion(corePathW));
@@ -286,12 +291,33 @@ int wmain(int argc, wchar_t* argv[])
 
 	wprintf(L"Loading core...\n");
 
-	if (!LoadHookDLL(corePathW, baseAddress + FilePEFile.image_nt_headers.OptionalHeader.AddressOfEntryPoint))
-	{
-		TerminateProcess(pi.hProcess, 0);
-		(void)_getch();
-		return 0;
-	}
+
+		HMODULE hKernel32 = GetModuleHandle(L"Kernel32.dll");
+		FARPROC pLoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
+		HANDLE hProcess = pi.hProcess;
+		LPVOID pRemoteMemory = VirtualAllocEx(hProcess, NULL, strlen(outputBlasterPath), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		WriteProcessMemory(hProcess, pRemoteMemory, outputBlasterPath, strlen(outputBlasterPath), NULL);
+		HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)pLoadLibraryA, pRemoteMemory, 0, NULL);
+			WaitForSingleObject(hThread, INFINITE);
+		DWORD dwExitCode = 0;
+		GetExitCodeThread(hThread, &dwExitCode);
+		CloseHandle(hThread);
+		VirtualFreeEx(hProcess, pRemoteMemory, 0, MEM_RELEASE);
+			if (dwExitCode != 0)
+		{
+			wprintf(L"Failed to Load DLL! (Error 5)\n");
+			TerminateProcess(pi.hProcess, 0);
+			(void)_getch();
+		}
+
+	
+		if (!LoadHookDLL(corePathW, baseAddress + FilePEFile.image_nt_headers.OptionalHeader.AddressOfEntryPoint))
+		{
+			TerminateProcess(pi.hProcess, 0);
+			(void)_getch();
+			return 0;
+		}
+	
 	wprintf(L"Success!\n");
 
 	wprintf(L"\nHave fun :)\n");
