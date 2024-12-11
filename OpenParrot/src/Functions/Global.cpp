@@ -566,7 +566,7 @@ static InitFunction globalFunc([]()
 
 	CreateThread(NULL, 0, GlobalGameThread, NULL, 0, NULL);
 
-	if (ToBool(config["General"]["Enable Outputs"]))
+	if (1 == 2 && ToBool(config["General"]["Enable Outputs"]))
 	{
 		blaster = LoadLibraryA("OutputBlaster.dll");
 		if (blaster)
