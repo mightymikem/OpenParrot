@@ -286,6 +286,39 @@ int wmain(int argc, wchar_t* argv[])
 
 	wprintf(L"Loading core...\n");
 
+
+	std::filesystem::path workingDirectory = std::filesystem::current_path();
+	#if _M_IX86
+	std::filesystem::path ffbBlasterPath = workingDirectory / L"FFBBlaster" / L"FFBBlaster.dll";
+	#else
+	std::filesystem::path ffbBlasterPath = workingDirectory / L"FFBBlaster" / L"FFBBlaster64.dll";
+	#endif
+
+
+	wprintf(L"Looking for FFBBlaster.dll at: %ls\n", ffbBlasterPath.wstring().c_str());
+
+	if (std::filesystem::exists(ffbBlasterPath))
+	{
+		wchar_t* ffbBlasterPathW = new wchar_t[wcslen(ffbBlasterPath.wstring().c_str()) + 1] { 0 };
+		wcscpy(ffbBlasterPathW, ffbBlasterPath.wstring().c_str());
+
+		wprintf(L"FFBBlaster.dll found: %ls\n", ffbBlasterPathW);
+
+		if (LoadHookDLL(ffbBlasterPathW, baseAddress + FilePEFile.image_nt_headers.OptionalHeader.AddressOfEntryPoint))
+		{
+			wprintf(L"FFBBlaster.dll loaded successfully!\n");
+			OutputDebugStringA("FFBBlaster.dll loaded successfully!\n");
+		}
+		else
+		{
+			wprintf(L"Failed to load FFBBlaster.dll. Continuing with core DLL only...\n");
+			OutputDebugStringA("Failed to load FFBBlaster.dll. Continuing with core DLL only...\n");
+		}
+
+		delete[] ffbBlasterPathW;
+	}
+
+
 	if (!LoadHookDLL(corePathW, baseAddress + FilePEFile.image_nt_headers.OptionalHeader.AddressOfEntryPoint))
 	{
 		TerminateProcess(pi.hProcess, 0);
